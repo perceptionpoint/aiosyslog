@@ -3,7 +3,8 @@ import logging
 import os
 import signal
 
-from aiosyslog.syslog_client import FAC_SYSLOG, SEV_DEBUG, SyslogClientRFC5424
+from aiosyslog.const import FAC_SYSLOG, SEV_DEBUG
+from aiosyslog.syslog_client import SyslogClientRFC5424
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO)
