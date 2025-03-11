@@ -61,3 +61,8 @@ target/
 # some vim definitions
 *.swp
 *.swo
+
+
+# test certs
+*.crt
+*.key

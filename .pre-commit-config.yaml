@@ -1,0 +1,81 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    -   id: trailing-whitespace
+        exclude: docs
+    -   id: check-added-large-files
+        exclude: app/site
+        args:
+          - --maxkb=1024
+    -   id: end-of-file-fixer
+        exclude: docs
+    -   id: check-yaml
+        exclude: docs
+    -   id: check-ast
+        exclude: docs
+    -   id: check-merge-conflict
+        exclude: docs
+
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.10.1
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+        exclude: docs
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        exclude: app/tests/
+        args:
+          - --follow-imports=skip
+          - --ignore-missing-imports
+          - --show-error-codes
+          - --python-version=3.11
+          - --implicit-optional
+
+        additional_dependencies:
+          - types-chardet
+          - types-python-dateutil
+          - types-six
+          - types-backports
+          - types-pytz
+          - types-paramiko
+          - types-attrs
+          - types-frozendict
+          - types-requests
+  - repo: https://github.com/pycqa/flake8.git
+    rev: 7.1.2
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear
+        # Only pyflakes (bugs and no style checks)
+        args: [ --max-line-length, "120", --select, F ]
+        language_version: python3
+  - repo: https://github.com/PyCQA/autoflake.git
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args:
+          - --in-place
+          - --remove-unused-variables
+          - --remove-all-unused-imports
+          - --ignore-init-module-imports
+          - --remove-duplicate-keys
+        language_version: python3
+  - repo: https://github.com/psf/black.git
+    rev: 25.1.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--skip-string-normalization, --line-length, "120"]
+  - repo: local
+    hooks:
+      - id: update-commit-msg
+        name: update-commit-msg
+        stages: [ commit-msg ]
+        entry: bash scripts/commit-msg.sh
+        language: system
+        always_run: true
