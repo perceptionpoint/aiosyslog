@@ -3,7 +3,7 @@ import socket
 import ssl
 from datetime import datetime
 
-from helpers import datetime2rfc3339
+from .helpers import datetime2rfc3339
 
 FAC_KERNEL = 0
 FAC_USER = 1

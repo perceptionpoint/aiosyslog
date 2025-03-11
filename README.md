@@ -1,4 +1,4 @@
-# pysyslogclient-aio
+# aiosyslog
 
 ## Description
 Syslog client for Python3 (RFC 3164/5424) using AysncIO
