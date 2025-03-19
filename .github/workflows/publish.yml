@@ -1,0 +1,58 @@
+name: release new version
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # For creating GitHub releases
+      id-token: write  # For PyPI OIDC authentication
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history to check for existing tags
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Create tag with timestamp
+        id: create_tag
+        run: |
+          DATE=$(date +'%Y-%m-%d')
+          TIMESTAMP=$(date +'%H-%M-%S')
+          BASE_TAG="v${DATE}"
+          
+          TAG="${BASE_TAG}.${TIMESTAMP}"
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git tag $TAG
+          git push origin $TAG
+      
+      - name: Install build dependencies
+        run: pip install build twine
+      
+      - name: Build package
+        run: python -m build
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.create_tag.outputs.tag }}
+          files: |
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true

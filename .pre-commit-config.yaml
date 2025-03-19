@@ -71,11 +71,3 @@ repos:
       - id: black
         language_version: python3
         args: [--skip-string-normalization, --line-length, "120"]
-  - repo: local
-    hooks:
-      - id: update-commit-msg
-        name: update-commit-msg
-        stages: [ commit-msg ]
-        entry: bash scripts/commit-msg.sh
-        language: system
-        always_run: true
