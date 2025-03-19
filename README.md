@@ -24,5 +24,5 @@ python3.12 pysyslogclient/cli.py --server 127.0.0.1 --port 6514 --protocol tcp -
 ```bash
 python3.12 pysyslogclient/cli.py --server 127.0.0.1 --port 6514 --protocol tls --cafile my_server_certificate.crt  --certfile my_client_cert.crt --keyfile my_private_key.key --message "test message over tls with client cert authentication"
 ```
-- in your own code
-	see [example.py](example.py)
+- to run from your code
+	see [example.py](https://github.com/perceptionpoint/aiosyslog/blob/master/example.py)
