@@ -75,8 +75,9 @@ class SyslogClient:
             if self.certfile and self.keyfile:
                 try:
                     if self.certfile.startswith("-----BEGIN") and self.keyfile.startswith("-----BEGIN"):
-                        import io
-                        ssl_context.load_cert_chain(certfile=io.BytesIO(self.certfile), keyfile=io.BytesIO(self.keyfile))
+                        cert = io.BytesIO(self.certfile.encode())
+                        key = io.BytesIO(self.keyfile.encode())
+                        ssl_context.load_cert_chain(certfile=cert, keyfile=key)
                     else:
                         ssl_context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
                 except FileNotFoundError:
