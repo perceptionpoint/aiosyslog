@@ -3,9 +3,9 @@ import logging
 import socket
 import ssl
 from datetime import datetime
-import io
 from .const import FAC_USER, SEV_INFO
 from .helpers import datetime2rfc3339
+from .tmpfile import TempFile
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -32,6 +32,8 @@ class SyslogClient:
         self.forceipv4 = forceipv4
         self.clientname=clientname
         self.use_tls = True if proto.upper() == 'TLS' else False
+        self.ssl_context = None
+
         if self.use_tls:
             self.cafile = cert_data['cafile']
             self.certfile = cert_data.get('certfile')
@@ -59,34 +61,37 @@ class SyslogClient:
         transport.sendto(message)
         transport.close()
 
-    async def _send_tcp(self, message):
-        ssl_context = None
-        if self.use_tls:
-            ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            try:
-                # can pass the content of the file directly. kinda hacky, but whatever.
-                if self.cafile.startswith("-----BEGIN"):
-                    ssl_context.load_verify_locations(cadata=self.cafile)
-                else:
-                    ssl_context.load_verify_locations(self.cafile)
-            except FileNotFoundError:
-                raise Exception(f"could not load server certificate. No such file or directory, {self.cafile}")
-            # if using client certificate authentication
-            if self.certfile and self.keyfile:
-                try:
-                    if self.certfile.startswith("-----BEGIN") and self.keyfile.startswith("-----BEGIN"):
-                        cert = io.BytesIO(self.certfile.encode())
-                        key = io.BytesIO(self.keyfile.encode())
-                        ssl_context.load_cert_chain(certfile=cert, keyfile=key)
-                    else:
-                        ssl_context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
-                except FileNotFoundError:
-                    raise Exception(
-                        f"could not load client certificate or key. No such file or directory, [{self.certfile}, {self.keyfile}]"
-                    )
-
+    def get_ssl_context(self):
+        ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         try:
-            _, writer = await asyncio.open_connection(self.server, self.port, ssl=ssl_context)
+            # can pass the content of the file directly. kinda hacky, but whatever.
+            if self.cafile.startswith("-----BEGIN"):
+                ssl_context.load_verify_locations(cadata=self.cafile)
+            else:
+                ssl_context.load_verify_locations(self.cafile)
+        except FileNotFoundError:
+            raise Exception(f"could not load server certificate. No such file or directory, {self.cafile}")
+        # if using client certificate authentication
+        if self.certfile and self.keyfile:
+            try:
+                if self.certfile.startswith("-----BEGIN") and self.keyfile.startswith("-----BEGIN"):
+                        # this is kinda not effective at all, ngl.. but i dont wanna store keys on the drive.
+                        with TempFile(self.certfile) as cert, TempFile(self.keyfile) as key:
+                            ssl_context.load_cert_chain(certfile=cert.path, keyfile=key.path)
+                else:
+                    ssl_context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
+            except FileNotFoundError:
+                raise Exception(
+                    f"could not load client certificate or key. No such file or directory, [{self.certfile}, {self.keyfile}]"
+                )
+        return ssl_context
+
+
+    async def _send_tcp(self, message):
+        if self.use_tls and self.ssl_context is None:
+            self.ssl_context=self.get_ssl_context()
+        try:
+            _, writer = await asyncio.open_connection(self.server, self.port, ssl=self.ssl_context)
             writer.write(message)
             await writer.drain()
             writer.close()
