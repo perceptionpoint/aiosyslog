@@ -3,7 +3,7 @@ import logging
 import socket
 import ssl
 from datetime import datetime
-
+import io
 from .const import FAC_USER, SEV_INFO
 from .helpers import datetime2rfc3339
 
@@ -64,13 +64,21 @@ class SyslogClient:
         if self.use_tls:
             ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
             try:
-                ssl_context.load_verify_locations(self.cafile)
+                # can pass the content of the file directly. kinda hacky, but whatever.
+                if self.cafile.startswith("-----BEGIN"):
+                    ssl_context.load_verify_locations(cadata=self.cafile)
+                else:
+                    ssl_context.load_verify_locations(self.cafile)
             except FileNotFoundError:
                 raise Exception(f"could not load server certificate. No such file or directory, {self.cafile}")
             # if using client certificate authentication
             if self.certfile and self.keyfile:
                 try:
-                    ssl_context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
+                    if self.certfile.startswith("-----BEGIN") and self.keyfile.startswith("-----BEGIN"):
+                        import io
+                        ssl_context.load_cert_chain(certfile=io.BytesIO(self.certfile), keyfile=io.BytesIO(self.keyfile))
+                    else:
+                        ssl_context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
                 except FileNotFoundError:
                     raise Exception(
                         f"could not load client certificate or key. No such file or directory, [{self.certfile}, {self.keyfile}]"
