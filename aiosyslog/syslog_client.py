@@ -6,6 +6,7 @@ from datetime import datetime
 from .const import FAC_USER, SEV_INFO
 from .helpers import datetime2rfc3339
 from .tmpfile import TempFile
+from . import exceptions as exc
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -22,6 +23,7 @@ class SyslogClient:
         rfc: str = None,
         maxMessageLength: int = 2048,
         cert_data: dict = dict(),
+        timeout: int = 30
     ) -> None:
         self.socket = None
         self.server = server
@@ -33,7 +35,7 @@ class SyslogClient:
         self.clientname=clientname
         self.use_tls = True if proto.upper() == 'TLS' else False
         self.ssl_context = None
-
+        self.timeout = timeout
         if self.use_tls:
             self.cafile = cert_data['cafile']
             self.certfile = cert_data.get('certfile')
@@ -69,8 +71,8 @@ class SyslogClient:
                 ssl_context.load_verify_locations(cadata=self.cafile)
             else:
                 ssl_context.load_verify_locations(self.cafile)
-        except FileNotFoundError:
-            raise Exception(f"could not load server certificate. No such file or directory, {self.cafile}")
+        except Exception as ex:
+            raise exc.ServerCertificateLoadError(f"Could not load server certificate: {ex}")
         # if using client certificate authentication
         if self.certfile and self.keyfile:
             try:
@@ -80,26 +82,30 @@ class SyslogClient:
                             ssl_context.load_cert_chain(certfile=cert.path, keyfile=key.path)
                 else:
                     ssl_context.load_cert_chain(certfile=self.certfile, keyfile=self.keyfile)
-            except FileNotFoundError:
-                raise Exception(
-                    f"could not load client certificate or key. No such file or directory, [{self.certfile}, {self.keyfile}]"
-                )
+            except Exception as ex:
+                raise exc.ClientCertificateLoadError(f"Could not load client certificate: {ex}")
         return ssl_context
 
-
+    # TODO: add a timeout decorator?
     async def _send_tcp(self, message):
         if self.use_tls and self.ssl_context is None:
             self.ssl_context=self.get_ssl_context()
         try:
-            _, writer = await asyncio.open_connection(self.server, self.port, ssl=self.ssl_context)
-            writer.write(message)
-            await writer.drain()
-            writer.close()
-            await writer.wait_closed()
+            _, conn = await asyncio.wait_for(
+                asyncio.open_connection(self.server, self.port, ssl=self.ssl_context),
+                timeout=self.timeout
+            )
+            conn.write(message)
+            await conn.drain()
+            conn.close()
+            await conn.wait_closed()
         except asyncio.TimeoutError:
-            print("Timeout: Unable to send log.")
-        except Exception as e:
-            print(f"Error: {e}")
+            raise exc.SyslogConnectionTimeout(f"Timed out waiting, server={self.server}:{self.port}")
+        except OSError as ex:
+            if "Errno 61" in ex.args[0]:
+                raise exc.SyslogConnectionFailure(f"Failed establising connection, server={self.server}:{self.port}")
+        except Exception as ex:
+            raise exc.UnknownSyslogResponseError(f"uknown error while sending message: {ex}")
 
 
 class SyslogClientRFC5424(SyslogClient):
@@ -111,6 +117,7 @@ class SyslogClientRFC5424(SyslogClient):
         forceipv4: bool = False,
         clientname: str = None,
         cert_data: dict = dict(),
+        timeout: int = 30
     ) -> None:
         super().__init__(
             server=server,
@@ -121,6 +128,7 @@ class SyslogClientRFC5424(SyslogClient):
             rfc='5424',
             maxMessageLength=4096,
             cert_data=cert_data,
+            timeout=timeout
         )
 
     async def log(
@@ -170,6 +178,7 @@ class SyslogClientRFC3164(SyslogClient):
         forceipv4: bool = False,
         clientname: str = None,
         cert_data: dict = dict(),
+        timeout: int = 30
     ) -> None:
         super().__init__(
             server=server,
@@ -180,6 +189,7 @@ class SyslogClientRFC3164(SyslogClient):
             rfc='3164',
             maxMessageLength=2048,
             cert_data=cert_data,
+            timeout=timeout
         )
 
     async def log(
