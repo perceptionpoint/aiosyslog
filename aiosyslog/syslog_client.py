@@ -30,16 +30,15 @@ class SyslogClient:
         self.rfc = rfc
         self.maxMessageLength = maxMessageLength
         self.forceipv4 = forceipv4
+        self.clientname=clientname
         self.use_tls = True if proto.upper() == 'TLS' else False
         if self.use_tls:
             self.cafile = cert_data['cafile']
             self.certfile = cert_data.get('certfile')
             self.keyfile = cert_data.get('keyfile')
 
-        if clientname is None:
-            self.clientname = socket.getfqdn()
-            if self.clientname is None:
-                self.clientname = socket.gethostname()
+        if self.clientname is None:
+            self.clientname = socket.getfqdn() or socket.gethostname() or "aiosyslog-client"
 
     async def send(self, message: bytes):
         message = message[: self.maxMessageLength]
