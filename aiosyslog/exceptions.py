@@ -14,3 +14,5 @@ class ServerCertificateLoadError(Exception):
     pass
 
 
+class SyslogUnmanagedSocketError(Exception):
+    pass

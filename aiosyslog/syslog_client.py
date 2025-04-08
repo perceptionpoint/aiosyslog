@@ -108,7 +108,7 @@ class SyslogClient:
             elif "Errno 8" in e_str:
                 raise exc.SyslogConnectionFailure(f"Invalid server name provided, server={self.server}:{self.port}")
             else:
-                print(f"unknown OSError exception: {ex}")
+                raise exc.SyslogUnmanagedSocketError(f"Unknown OSError exception: {ex}")
         except Exception as ex:
             raise exc.UnknownSyslogResponseError(f"uknown error while sending message: {ex}")
 
