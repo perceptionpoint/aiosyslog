@@ -102,8 +102,13 @@ class SyslogClient:
         except asyncio.TimeoutError:
             raise exc.SyslogConnectionTimeout(f"Timed out waiting, server={self.server}:{self.port}")
         except OSError as ex:
-            if "Errno 61" in ex.args[0]:
-                raise exc.SyslogConnectionFailure(f"Failed establising connection, server={self.server}:{self.port}")
+            e_str=str(ex)
+            if "Errno 61" in e_str:
+                raise exc.SyslogConnectionFailure(f"Connection refused, server={self.server}:{self.port}")
+            elif "Errno 8" in e_str:
+                raise exc.SyslogConnectionFailure(f"Invalid server name provided, server={self.server}:{self.port}")
+            else:
+                print(f"unknown OSError exception: {ex}")
         except Exception as ex:
             raise exc.UnknownSyslogResponseError(f"uknown error while sending message: {ex}")
 
