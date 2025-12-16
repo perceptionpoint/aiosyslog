@@ -65,14 +65,15 @@ class SyslogClient:
 
     def get_ssl_context(self):
         ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        try:
-            # can pass the content of the file directly. kinda hacky, but whatever.
-            if self.cafile.startswith("-----BEGIN"):
-                ssl_context.load_verify_locations(cadata=self.cafile)
-            else:
-                ssl_context.load_verify_locations(self.cafile)
-        except Exception as ex:
-            raise exc.ServerCertificateLoadError(f"Could not load server certificate: {ex}")
+        if self.cafile:
+            try:
+                # can pass the content of the file directly. kinda hacky, but whatever.
+                if self.cafile.startswith("-----BEGIN"):
+                    ssl_context.load_verify_locations(cadata=self.cafile)
+                else:
+                    ssl_context.load_verify_locations(self.cafile)
+            except Exception as ex:
+                raise exc.ServerCertificateLoadError(f"Could not load server certificate: {ex}")
         # if using client certificate authentication
         if self.certfile and self.keyfile:
             try:
