@@ -195,7 +195,7 @@ class SyslogClientRFC5424(SyslogClient):
         cert_data: dict = dict(),
         timeout: int = 30,
         idle_timeout: int = 60,
-        reuse_connection: bool = True
+        reuse_connection: bool = False
     ) -> None:
         super().__init__(
             server=server,
