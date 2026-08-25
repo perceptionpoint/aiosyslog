@@ -1,3 +1,6 @@
+0.2.0
+---
+- added support for tcp connection pooling for high-throughput scenarions. note, this may drop messages silently when used in cases of the server closing the connection before the client realizes it, so use at your own risk.
 0.1.9
 ---
 - fixed a nonetype error where empty serverca was passed.
